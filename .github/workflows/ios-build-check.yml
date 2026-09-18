@@ -32,7 +32,7 @@ jobs:
           python3 release-preflight.py
           python3 privacy-preflight.py
 
-            - name: Compile for iPhone Simulator
+      - name: Compile for iPhone Simulator
         working-directory: build-source
         run: |
           xcodebuild -project FreeTinnitusHelp.xcodeproj \
@@ -42,7 +42,7 @@ jobs:
             CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/FreeTinnitusHelpBuild" \
             CODE_SIGNING_ALLOWED=NO build
 
-            - name: Upload iPhone Simulator build
+      - name: Upload iPhone Simulator build
         uses: actions/upload-artifact@v4
         with:
           name: FreeTinnitusHelp-Simulator
