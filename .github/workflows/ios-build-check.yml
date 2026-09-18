@@ -39,12 +39,29 @@ jobs:
             -target FreeTinnitusHelp \
             -sdk iphonesimulator \
             -configuration Debug \
-            CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/FreeTinnitusHelpBuild" \
+            CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/FreeTinnitusHelpSimulator" \
             CODE_SIGNING_ALLOWED=NO build
 
       - name: Upload iPhone Simulator build
         uses: actions/upload-artifact@v4
         with:
           name: FreeTinnitusHelp-Simulator
-          path: ${{ runner.temp }}/FreeTinnitusHelpBuild/FreeTinnitusHelp.app
+          path: ${{ runner.temp }}/FreeTinnitusHelpSimulator/FreeTinnitusHelp.app
+          if-no-files-found: error
+
+      - name: Compile for real iPhone
+        working-directory: build-source
+        run: |
+          xcodebuild -project FreeTinnitusHelp.xcodeproj \
+            -target FreeTinnitusHelp \
+            -sdk iphoneos \
+            -configuration Debug \
+            CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/FreeTinnitusHelpDevice" \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Upload unsigned iPhone build
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeTinnitusHelp-iPhone-Unsigned
+          path: ${{ runner.temp }}/FreeTinnitusHelpDevice/FreeTinnitusHelp.app
           if-no-files-found: error
