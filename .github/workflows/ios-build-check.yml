@@ -13,7 +13,7 @@ jobs:
       - name: Extract iPhone source package
         shell: bash
         run: |
-          ZIP="free-tinnitus-help-iphone-v1.8-device-test-handoff(1).zip"
+          ZIP="free-tinnitus-help-iphone-v1.8-device-test-handoff-FIXED.zip"
           if [ -f "$ZIP" ]; then
             mkdir -p build-source
             unzip -q "$ZIP" -d build-source
