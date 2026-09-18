@@ -1,0 +1,39 @@
+name: iOS Build Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract iPhone source package
+        shell: bash
+        run: |
+          ZIP="free-tinnitus-help-iphone-v1.8-device-test-handoff.zip"
+          if [ -f "$ZIP" ]; then
+            mkdir -p build-source
+            unzip -q "$ZIP" -d build-source
+          else
+            echo "Missing $ZIP"
+            exit 1
+          fi
+      - name: Validate source
+        working-directory: build-source
+        run: |
+          python3 validate-xcode-project.py
+          python3 swift-sanity.py
+          python3 audio-engine-audit.py
+          python3 release-preflight.py
+          python3 privacy-preflight.py
+      - name: Compile for iPhone Simulator
+        working-directory: build-source
+        run: |
+          xcodebuild -project FreeTinnitusHelp.xcodeproj \
+            -target FreeTinnitusHelp \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO build
