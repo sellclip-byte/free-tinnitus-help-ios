@@ -39,5 +39,12 @@ jobs:
             -target FreeTinnitusHelp \
             -sdk iphonesimulator \
             -configuration Debug \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO build
-          
+
+      - name: Upload iPhone Simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeTinnitusHelp-Simulator
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/FreeTinnitusHelp.app
+          if-no-files-found: error
