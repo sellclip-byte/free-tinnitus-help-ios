@@ -8,13 +8,13 @@ on:
 jobs:
   build:
     runs-on: macos-15
-    steps: 
+    steps:
       - uses: actions/checkout@v4
 
       - name: Extract iPhone source package
         shell: bash
         run: |
-       ZIP="FreeTinnitusHelp-FULL-PROJECT-RECOVERED.zip"
+          ZIP="FreeTinnitusHelp-FULL-PROJECT-RECOVERED.zip"
           if [ -f "$ZIP" ]; then
             mkdir -p build-source
             unzip -q "$ZIP" -d build-source
