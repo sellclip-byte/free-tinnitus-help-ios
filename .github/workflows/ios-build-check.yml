@@ -23,6 +23,24 @@ jobs:
             exit 1
           fi
 
+      - name: Apply dt.sound ear-routing fix
+        working-directory: build-source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("FreeTinnitusHelp/Web/index.html")
+          s = p.read_text()
+          old = "localStorage.setItem(KEY,String(pan));"
+          new = "localStorage.setItem(KEY,String(pan));\n   try{ if(window.IOSNative) IOSNative.pan(pan); }catch(e){}"
+          if new not in s:
+              if old not in s:
+                  raise SystemExit("Ear routing insertion point not found")
+              s = s.replace(old, new, 1)
+              p.write_text(s)
+          print("dt.sound native pan bridge enabled")
+          PY
+
       - name: Validate source
         working-directory: build-source
         run: |
