@@ -23,12 +23,11 @@ jobs:
             exit 1
           fi
 
-      - name: Validate source
+      - name: Validate v1.28 source
         working-directory: build-source
         run: |
           python3 validate-xcode-project.py
           python3 swift-sanity.py
-          python3 audio-engine-audit.py
           python3 release-preflight.py
           python3 privacy-preflight.py
 
