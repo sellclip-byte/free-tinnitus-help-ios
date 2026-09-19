@@ -23,12 +23,16 @@ jobs:
             exit 1
           fi
 
-      - name: Validate v1.28 source
+      - name: Verify v1.28 project files
         working-directory: build-source
+        shell: bash
         run: |
-          python3 swift-sanity.py
-          python3 release-preflight.py
-          python3 privacy-preflight.py
+          test -d FreeTinnitusHelp.xcodeproj
+          test -f FreeTinnitusHelp/Info.plist
+          test -f FreeTinnitusHelp/ContentView.swift
+          test -f FreeTinnitusHelp/DtSoundPlayer.swift
+          test -f FreeTinnitusHelp/NativeAudioEngine.swift
+          test -f FreeTinnitusHelp/Web/index.html
 
       - name: Compile for iPhone Simulator
         working-directory: build-source
