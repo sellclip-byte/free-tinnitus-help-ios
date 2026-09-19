@@ -14,7 +14,7 @@ jobs:
       - name: Extract iPhone source package
         shell: bash
         run: |
-          ZIP="FreeTinnitusHelp-FULL-PROJECT-RECOVERED.zip"
+          ZIP="FreeTinnitusHelp-v1.28-PROJECT.zip"
           if [ -f "$ZIP" ]; then
             mkdir -p build-source
             unzip -q "$ZIP" -d build-source
@@ -22,24 +22,6 @@ jobs:
             echo "Missing $ZIP"
             exit 1
           fi
-
-      - name: Apply dt.sound ear-routing fix
-        working-directory: build-source
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("FreeTinnitusHelp/Web/index.html")
-          s = p.read_text()
-          old = "localStorage.setItem(KEY,String(pan));"
-          new = "localStorage.setItem(KEY,String(pan));\n   try{ if(window.IOSNative) IOSNative.pan(pan); }catch(e){}"
-          if new not in s:
-              if old not in s:
-                  raise SystemExit("Ear routing insertion point not found")
-              s = s.replace(old, new, 1)
-              p.write_text(s)
-          print("dt.sound native pan bridge enabled")
-          PY
 
       - name: Validate source
         working-directory: build-source
