@@ -14,7 +14,7 @@ jobs:
       - name: Extract iPhone source package
         shell: bash
         run: |
-         ZIP="FreeTinnitusHelp-v1.35-PROJECT-VALID.zip"
+        ZIP="FreeTinnitusHelp-v1.36-RESCUE-PROJECT.zip"
           if [ -f "$ZIP" ]; then
             mkdir -p build-source
             unzip -q "$ZIP" -d build-source
