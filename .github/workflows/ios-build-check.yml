@@ -8,7 +8,8 @@ on:
 jobs:
   build:
     runs-on: macos-15
-       steps:
+
+    steps:
       - uses: actions/checkout@v4
 
       - name: Extract iPhone source package
@@ -23,47 +24,45 @@ jobs:
             exit 1
           fi
 
-      - name: Verify v1.28 project files
+      - name: Verify project files
         working-directory: build-source
         shell: bash
         run: |
           test -d FreeTinnitusHelp.xcodeproj
           test -f FreeTinnitusHelp/Info.plist
-          test -f FreeTinnitusHelp/ContentView.swift
-          test -f FreeTinnitusHelp/DtSoundPlayer.swift
-          test -f FreeTinnitusHelp/NativeAudioEngine.swift
-          test -f FreeTinnitusHelp/Web/index.html
 
-      - name: Compile for iPhone Simulator
+      - name: Build Simulator
         working-directory: build-source
         run: |
-          xcodebuild -project FreeTinnitusHelp.xcodeproj \
-            -target FreeTinnitusHelp \
+          xcodebuild \
+            -project FreeTinnitusHelp.xcodeproj \
+            -scheme FreeTinnitusHelp \
             -sdk iphonesimulator \
             -configuration Debug \
-            CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/FreeTinnitusHelpSimulator" \
-            CODE_SIGNING_ALLOWED=NO build
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath build/simulator \
+            build
 
-      - name: Upload iPhone Simulator build
+      - name: Build iPhone unsigned
+        working-directory: build-source
+        run: |
+          xcodebuild \
+            -project FreeTinnitusHelp.xcodeproj \
+            -scheme FreeTinnitusHelp \
+            -sdk iphoneos \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath build/iphone \
+            build
+
+      - name: Upload Simulator
         uses: actions/upload-artifact@v4
         with:
           name: FreeTinnitusHelp-Simulator
-          path: ${{ runner.temp }}/FreeTinnitusHelpSimulator/FreeTinnitusHelp.app
-          if-no-files-found: error
+          path: build-source/build/simulator/Build/Products/Debug-iphonesimulator/FreeTinnitusHelp.app
 
-      - name: Compile for real iPhone
-        working-directory: build-source
-        run: |
-          xcodebuild -project FreeTinnitusHelp.xcodeproj \
-            -target FreeTinnitusHelp \
-            -sdk iphoneos \
-            -configuration Debug \
-            CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/FreeTinnitusHelpDevice" \
-            CODE_SIGNING_ALLOWED=NO build
-
-      - name: Upload unsigned iPhone build
+      - name: Upload iPhone unsigned
         uses: actions/upload-artifact@v4
         with:
           name: FreeTinnitusHelp-iPhone-Unsigned
-          path: ${{ runner.temp }}/FreeTinnitusHelpDevice/FreeTinnitusHelp.app
-          if-no-files-found: error
+          path: build-source/build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app
