@@ -15,7 +15,7 @@ jobs:
       - name: Extract iPhone source package
         shell: bash
         run: |
-          ZIP="DR-Tinnitus-AppStore-Project.zip"
+          ZIP="DR-Tinnitus-AppStore-FINAL.zip"
           if [ -f "$ZIP" ]; then
             mkdir -p build-source
             unzip -q "$ZIP" -d build-source
