@@ -23,6 +23,16 @@ jobs:
             echo "Missing $ZIP"
             exit 1
           fi
+          # Overlay the corrected native audio engine maintained at repository root.
+          cp NativeAudioEngine.swift build-source/FreeTinnitusHelp/NativeAudioEngine.swift
+          # Correct the UI ear labels to the physical output channels on this build.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("build-source/FreeTinnitusHelp/ContentView.swift")
+          s=p.read_text()
+          s=s.replace('case "pan": NativeAudioEngine.shared.pan=dbl(d,"value",0)', 'case "pan": NativeAudioEngine.shared.pan = -dbl(d,"value",0)')
+          p.write_text(s)
+          PY
 
       - name: Verify project files
         working-directory: build-source
