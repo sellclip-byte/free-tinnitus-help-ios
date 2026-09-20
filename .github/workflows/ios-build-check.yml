@@ -14,14 +14,14 @@ jobs:
       - name: Extract iPhone source package
         shell: bash
         run: |
-          ZIP="FreeTinnitusHelp-v1.36-RESCUE-PROJECT.zip"
-          if [ -f "$ZIP" ]; then
+       ZIP="FreeTinnitusHelp-v1.30-COLOR-CATALOG-PERSONAL-TONE-PROJECT.zip"        
+       if [ -f "$ZIP" ]; then
             mkdir -p build-source
             unzip -q "$ZIP" -d build-source
           else
             echo "Missing $ZIP"
             exit 1
-          fi
+          fi   
 
       - name: Verify v1.28 project files
         working-directory: build-source
