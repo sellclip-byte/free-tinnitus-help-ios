@@ -78,8 +78,11 @@ jobs:
           APP="build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app"
           test -d "$APP"
           test -f "$APP/Info.plist"
-          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist")
-          test -n "$EXECUTABLE"
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist" 2>/dev/null || true)
+          if [ -z "$EXECUTABLE" ]; then
+            EXECUTABLE="FreeTinnitusHelp"
+            /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string $EXECUTABLE" "$APP/Info.plist"
+          fi
           test -f "$APP/$EXECUTABLE"
           rm -rf ipa-package
           mkdir -p ipa-package/Payload
