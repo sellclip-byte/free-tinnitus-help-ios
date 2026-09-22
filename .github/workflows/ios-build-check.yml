@@ -1,94 +1,96 @@
-name: iOS Build Check
+name: Exact Fixed IPA Build
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ exact-fixed-build ]
 
 jobs:
   build:
     runs-on: macos-15
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Extract iPhone source package
+      - name: Locate exact approved 129-sound source
         shell: bash
         run: |
-          ZIP="FreeTinnitusHelp-v1.30-COLOR-CATALOG-PERSONAL-TONE-PROJECT.zip"
-          if [ -f "$ZIP" ]; then
-            mkdir -p build-source
-            unzip -q "$ZIP" -d build-source
-          else
-            echo "Missing $ZIP"
-            exit 1
-          fi
+          set -e
+          TARGET="5da02050646a2c7be186f084de2dfab69656e1d9966fe8ac42b49b5f91ab6c89"
+          rm -rf build-source /tmp/exact-search
+          mkdir -p /tmp/exact-search
+          FOUND=""
+          for ZIP in *.zip; do
+            D="/tmp/exact-search/$(basename "$ZIP" .zip)"
+            mkdir -p "$D"
+            unzip -q "$ZIP" -d "$D" || continue
+            while IFS= read -r IDX; do
+              H=$(shasum -a 256 "$IDX" | awk '{print $1}')
+              if [ "$H" = "$TARGET" ]; then
+                ROOT=$(dirname "$(dirname "$(dirname "$IDX")")")
+                echo "MATCHED SOURCE: $ZIP"
+                cp -R "$ROOT" build-source
+                FOUND="$ZIP"
+                break 2
+              fi
+            done < <(find "$D" -type f -path '*/FreeTinnitusHelp/Web/index.html')
+          done
+          test -n "$FOUND"
+          test -d build-source/FreeTinnitusHelp.xcodeproj
+          test -f build-source/FreeTinnitusHelp/Web/index.html
+          test "$(shasum -a 256 build-source/FreeTinnitusHelp/Web/index.html | awk '{print $1}')" = "$TARGET"
+
+      - name: Apply only stereo routing fix
+        shell: bash
+        run: |
           cp NativeAudioEngine.swift build-source/FreeTinnitusHelp/NativeAudioEngine.swift
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path("build-source/FreeTinnitusHelp/ContentView.swift")
-          s=p.read_text()
-          s=s.replace('case "pan": NativeAudioEngine.shared.pan=dbl(d,"value",0)', 'case "pan": NativeAudioEngine.shared.pan = -dbl(d,"value",0)')
-          p.write_text(s)
-          PY
+          test "$(shasum -a 256 build-source/FreeTinnitusHelp/NativeAudioEngine.swift | awk '{print $1}')" = "a0f59eb7a81b5de6377ff0099ff5e285580e541808b905f0090265437ee098ab"
 
-      - name: Verify project files
-        working-directory: build-source
+      - name: Apply approved gold ear app icon
         shell: bash
         run: |
-          test -d FreeTinnitusHelp.xcodeproj
-          test -f FreeTinnitusHelp/Info.plist
-
-      - name: Build Simulator
-        working-directory: build-source
-        run: |
-          xcodebuild \
-            -project FreeTinnitusHelp.xcodeproj \
-            -scheme FreeTinnitusHelp \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            -derivedDataPath build/simulator \
-            build
+          set -e
+          git show origin/app-store-version:DR-Tinnitus-AppStore-FINAL.zip > /tmp/dr-final.zip
+          rm -rf /tmp/dr-icon && mkdir -p /tmp/dr-icon
+          unzip -q /tmp/dr-final.zip -d /tmp/dr-icon
+          ICON=$(find /tmp/dr-icon -type f -name 'icon-1024.png' -print0 | while IFS= read -r -d '' f; do
+            H=$(shasum -a 256 "$f" | awk '{print $1}')
+            if [ "$H" = "3fad18fd3364276eb494494090054bc5ee9c2d155a85a44e57b82c5b1937a161" ]; then echo "$f"; break; fi
+          done)
+          test -n "$ICON"
+          APPICON="build-source/FreeTinnitusHelp/Assets.xcassets/AppIcon.appiconset"
+          mkdir -p "$APPICON"
+          cp "$ICON" "$APPICON/icon-1024.png"
+          sips -z 180 180 "$ICON" --out "$APPICON/icon-180.png" >/dev/null
+          sips -z 120 120 "$ICON" --out "$APPICON/icon-120.png" >/dev/null
+          sips -z 87 87 "$ICON" --out "$APPICON/icon-87.png" >/dev/null
+          sips -z 80 80 "$ICON" --out "$APPICON/icon-80.png" >/dev/null
+          sips -z 60 60 "$ICON" --out "$APPICON/icon-60.png" >/dev/null
+          sips -z 58 58 "$ICON" --out "$APPICON/icon-58.png" >/dev/null
+          sips -z 40 40 "$ICON" --out "$APPICON/icon-40.png" >/dev/null
 
       - name: Build iPhone unsigned
         working-directory: build-source
         run: |
-          xcodebuild \
-            -project FreeTinnitusHelp.xcodeproj \
-            -scheme FreeTinnitusHelp \
-            -sdk iphoneos \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            -derivedDataPath build/iphone \
-            build
+          xcodebuild -project FreeTinnitusHelp.xcodeproj -scheme FreeTinnitusHelp -sdk iphoneos -configuration Debug CODE_SIGNING_ALLOWED=NO -derivedDataPath build/iphone build
 
-      - name: Upload Simulator
-        uses: actions/upload-artifact@v4
-        with:
-          name: FreeTinnitusHelp-Simulator
-          path: build-source/build/simulator/Build/Products/Debug-iphonesimulator/FreeTinnitusHelp.app
-
-      - name: Package approved iPhone IPA for AltStore
+      - name: Package IPA
         working-directory: build-source
         shell: bash
         run: |
+          set -e
           APP="build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app"
           test -d "$APP"
-          test -f "$APP/Info.plist"
-          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist" 2>/dev/null || true)
-          if [ -z "$EXECUTABLE" ]; then
-            EXECUTABLE="FreeTinnitusHelp"
-            /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string $EXECUTABLE" "$APP/Info.plist"
-          fi
-          test -f "$APP/$EXECUTABLE"
+          test -f "$APP/FreeTinnitusHelp"
+          test "$(shasum -a 256 "$APP/Web/index.html" | awk '{print $1}')" = "5da02050646a2c7be186f084de2dfab69656e1d9966fe8ac42b49b5f91ab6c89"
           rm -rf ipa-package
           mkdir -p ipa-package/Payload
           cp -R "$APP" ipa-package/Payload/FreeTinnitusHelp.app
-          ditto -c -k --sequesterRsrc --keepParent ipa-package/Payload FreeTinnitusHelp-APPROVED-70abc10.ipa
+          ditto -c -k --sequesterRsrc --keepParent ipa-package/Payload FreeTinnitusHelp-EXACT-FIXED.ipa
 
-      - name: Upload approved iPhone IPA
+      - name: Upload exact fixed IPA
         uses: actions/upload-artifact@v4
         with:
-          name: FreeTinnitusHelp-APPROVED-70abc10-IPA
-          path: build-source/FreeTinnitusHelp-APPROVED-70abc10.ipa
+          name: FreeTinnitusHelp-EXACT-FIXED-IPA
+          path: build-source/FreeTinnitusHelp-EXACT-FIXED.ipa
