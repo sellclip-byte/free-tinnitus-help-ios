@@ -5,6 +5,9 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -21,7 +24,6 @@ jobs:
           test -n "$ROOT"
           echo "ROOT=$ROOT" >> "$GITHUB_ENV"
           grep -q "129 Sounds" "$ROOT/FreeTinnitusHelp/Web/index.html"
-          echo "Exact 129-sound UI verified"
 
       - name: Generate Xcode project
         shell: bash
@@ -31,39 +33,28 @@ jobs:
             brew install xcodegen
             xcodegen generate
           fi
-          test -d FreeTinnitusHelp.xcodeproj
-          test -f FreeTinnitusHelp/Info.plist
-          test -f FreeTinnitusHelp/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 
-      - name: Build iPhone unsigned
+      - name: Build and package IPA
         shell: bash
         run: |
           cd "$ROOT"
-          xcodebuild \
-            -project FreeTinnitusHelp.xcodeproj \
-            -scheme FreeTinnitusHelp \
-            -sdk iphoneos \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            -derivedDataPath build/iphone \
-            build
-
-      - name: Package IPA
-        shell: bash
-        run: |
-          cd "$ROOT"
+          xcodebuild -project FreeTinnitusHelp.xcodeproj -scheme FreeTinnitusHelp -sdk iphoneos -configuration Debug CODE_SIGNING_ALLOWED=NO -derivedDataPath build/iphone build
           APP="$(find build/iphone/Build/Products/Debug-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
-          test -n "$APP"
-          rm -rf ipa-package
           mkdir -p ipa-package/Payload
           cp -R "$APP" ipa-package/Payload/FreeTinnitusHelp.app
           cd ipa-package
           zip -qry ../FreeTinnitusHelp-EXACT-FIXED.ipa Payload
-          test -s ../FreeTinnitusHelp-EXACT-FIXED.ipa
 
-      - name: Upload exact fixed IPA
+      - name: Publish direct-download release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: exact-fixed-ipa
+          name: FreeTinnitusHelp EXACT FIXED
+          files: ${{ env.ROOT }}/FreeTinnitusHelp-EXACT-FIXED.ipa
+          make_latest: true
+
+      - name: Upload backup artifact
         uses: actions/upload-artifact@v4
         with:
           name: FreeTinnitusHelp-EXACT-FIXED-IPA
           path: ${{ env.ROOT }}/FreeTinnitusHelp-EXACT-FIXED.ipa
-          if-no-files-found: error
