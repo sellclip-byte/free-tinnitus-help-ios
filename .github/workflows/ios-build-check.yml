@@ -8,54 +8,37 @@ on:
 jobs:
   build:
     runs-on: macos-15
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract iPhone source package
+      - name: Extract exact approved project
         shell: bash
         run: |
-          ZIP="FreeTinnitusHelp-v1.30-COLOR-CATALOG-PERSONAL-TONE-PROJECT.zip"
-          if [ -f "$ZIP" ]; then
-            mkdir -p build-source
-            unzip -q "$ZIP" -d build-source
-          else
-            echo "Missing $ZIP"
-            exit 1
-          fi
-          # Overlay the corrected native audio engine maintained at repository root.
-          cp NativeAudioEngine.swift build-source/FreeTinnitusHelp/NativeAudioEngine.swift
-          # Correct the UI ear labels to the physical output channels on this build.
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path("build-source/FreeTinnitusHelp/ContentView.swift")
-          s=p.read_text()
-          s=s.replace('case "pan": NativeAudioEngine.shared.pan=dbl(d,"value",0)', 'case "pan": NativeAudioEngine.shared.pan = -dbl(d,"value",0)')
-          p.write_text(s)
-          PY
+          rm -rf build-source
+          mkdir build-source
+          unzip -q FreeTinnitusHelp-EXACT-FIXED-PROJECT.zip -d build-source
+          ROOT="$(find build-source -name project.yml -print -quit | xargs dirname)"
+          test -n "$ROOT"
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+          grep -q "129 Sounds" "$ROOT/FreeTinnitusHelp/Web/index.html"
+          echo "Exact 129-sound UI verified"
 
-      - name: Verify project files
-        working-directory: build-source
+      - name: Generate Xcode project
         shell: bash
         run: |
+          cd "$ROOT"
+          if [ ! -d FreeTinnitusHelp.xcodeproj ]; then
+            brew install xcodegen
+            xcodegen generate
+          fi
           test -d FreeTinnitusHelp.xcodeproj
           test -f FreeTinnitusHelp/Info.plist
-
-      - name: Build Simulator
-        working-directory: build-source
-        run: |
-          xcodebuild \
-            -project FreeTinnitusHelp.xcodeproj \
-            -scheme FreeTinnitusHelp \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            -derivedDataPath build/simulator \
-            build
+          test -f FreeTinnitusHelp/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 
       - name: Build iPhone unsigned
-        working-directory: build-source
+        shell: bash
         run: |
+          cd "$ROOT"
           xcodebuild \
             -project FreeTinnitusHelp.xcodeproj \
             -scheme FreeTinnitusHelp \
@@ -65,14 +48,22 @@ jobs:
             -derivedDataPath build/iphone \
             build
 
-      - name: Upload Simulator
-        uses: actions/upload-artifact@v4
-        with:
-          name: FreeTinnitusHelp-Simulator
-          path: build-source/build/simulator/Build/Products/Debug-iphonesimulator/FreeTinnitusHelp.app
+      - name: Package IPA
+        shell: bash
+        run: |
+          cd "$ROOT"
+          APP="$(find build/iphone/Build/Products/Debug-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP"
+          rm -rf ipa-package
+          mkdir -p ipa-package/Payload
+          cp -R "$APP" ipa-package/Payload/FreeTinnitusHelp.app
+          cd ipa-package
+          zip -qry ../FreeTinnitusHelp-EXACT-FIXED.ipa Payload
+          test -s ../FreeTinnitusHelp-EXACT-FIXED.ipa
 
-      - name: Upload iPhone unsigned
+      - name: Upload exact fixed IPA
         uses: actions/upload-artifact@v4
         with:
-          name: FreeTinnitusHelp-iPhone-Unsigned
-          path: build-source/build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app
+          name: FreeTinnitusHelp-EXACT-FIXED-IPA
+          path: ${{ env.ROOT }}/FreeTinnitusHelp-EXACT-FIXED.ipa
+          if-no-files-found: error
