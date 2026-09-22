@@ -28,7 +28,15 @@ final class NativeAudioEngine {
  func restoreProfile()->Bool{guard let p=AudioProfileStore.shared.load() else{return false};lock.lock();layers=p.layers.map{Layer(type:$0.type,frequency:$0.frequency,volume:$0.volume,band:$0.band,pulse:$0.pulse)};master=p.master;pan=p.pan;lock.unlock();return true}
  func start(){
   NowPlayingManager.shared.update(playing:true); if engine.isRunning{return}; configureSession()
-  let format=engine.outputNode.inputFormat(forBus:0); let sampleRate=format.sampleRate; var time=0.0
+  let outputFormat=engine.outputNode.inputFormat(forBus:0)
+  let sampleRate=outputFormat.sampleRate
+  // Force a non-interleaved stereo render format so Left/Both/Right always
+  // maps to two physical output channels, including Bluetooth/A2DP routes.
+  guard let format=AVAudioFormat(commonFormat:.pcmFormatFloat32,
+                                 sampleRate:sampleRate,
+                                 channels:2,
+                                 interleaved:false) else { return }
+  var time=0.0
   let renderBlock: AVAudioSourceNodeRenderBlock = { [weak self] _,_,frames,audioBufferList -> OSStatus in
    guard let self=self else{return noErr}; let buffers=UnsafeMutableAudioBufferListPointer(audioBufferList)
    self.lock.lock(); var localLayers=self.layers; self.lock.unlock()
@@ -36,10 +44,23 @@ final class NativeAudioEngine {
     var sum=0.0
     for index in localLayers.indices { var layer=localLayers[index]; sum += self.sample(for:&layer,time:time,sampleRate:sampleRate)*layer.volume; localLayers[index]=layer }
     let output=Float(max(-0.72,min(0.72,sum*self.master)))
-    for bufferIndex in 0..<buffers.count {
-     var side=1.0
-     if buffers.count>=2 { if bufferIndex==0 { side=self.pan>0 ? 1.0-self.pan:1.0 } else { side=self.pan<0 ? 1.0+self.pan:1.0 } }
-     if let data=buffers[bufferIndex].mData?.assumingMemoryBound(to:Float.self){data[frame]=output*Float(side)}
+    // Explicit constant-power-independent channel routing:
+    // pan -1 = left only, 0 = both, +1 = right only.
+    let p=max(-1.0,min(1.0,self.pan))
+    let leftGain:Float = p > 0 ? Float(1.0-p) : 1.0
+    let rightGain:Float = p < 0 ? Float(1.0+p) : 1.0
+    if buffers.count >= 2 {
+     if let left=buffers[0].mData?.assumingMemoryBound(to:Float.self){left[frame]=output*leftGain}
+     if let right=buffers[1].mData?.assumingMemoryBound(to:Float.self){right[frame]=output*rightGain}
+    } else if buffers.count == 1, let data=buffers[0].mData?.assumingMemoryBound(to:Float.self) {
+     // Defensive fallback for an interleaved stereo AudioBuffer.
+     let channels=max(1,Int(buffers[0].mNumberChannels))
+     if channels >= 2 {
+      data[frame*channels]=output*leftGain
+      data[frame*channels+1]=output*rightGain
+     } else {
+      data[frame]=output
+     }
     }
     time += 1.0/sampleRate
    }
