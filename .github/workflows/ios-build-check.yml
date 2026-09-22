@@ -71,8 +71,23 @@ jobs:
           name: FreeTinnitusHelp-Simulator
           path: build-source/build/simulator/Build/Products/Debug-iphonesimulator/FreeTinnitusHelp.app
 
-      - name: Upload iPhone unsigned
+      - name: Package iPhone IPA for AltStore
+        working-directory: build-source
+        shell: bash
+        run: |
+          APP="build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app"
+          test -d "$APP"
+          test -f "$APP/Info.plist"
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist")
+          test -n "$EXECUTABLE"
+          test -f "$APP/$EXECUTABLE"
+          rm -rf ipa-package
+          mkdir -p ipa-package/Payload
+          cp -R "$APP" ipa-package/Payload/DR-Tinnitus.app
+          ditto -c -k --sequesterRsrc --keepParent ipa-package/Payload DR-Tinnitus-Ear-Routing-Test.ipa
+
+      - name: Upload iPhone IPA
         uses: actions/upload-artifact@v4
         with:
-          name: DR-Tinnitus-iPhone-Unsigned
-          path: build-source/build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app
+          name: DR-Tinnitus-Ear-Routing-Test-IPA
+          path: build-source/DR-Tinnitus-Ear-Routing-Test.ipa
