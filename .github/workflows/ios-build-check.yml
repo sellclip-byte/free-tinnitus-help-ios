@@ -33,6 +33,8 @@ jobs:
             brew install xcodegen
             xcodegen generate
           fi
+          /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string FreeTinnitusHelp" FreeTinnitusHelp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable FreeTinnitusHelp" FreeTinnitusHelp/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" FreeTinnitusHelp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" FreeTinnitusHelp/Info.plist
 
       - name: Build and package IPA
         shell: bash
