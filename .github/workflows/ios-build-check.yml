@@ -24,7 +24,7 @@ jobs:
           for ZIP in *.zip; do
             D="/tmp/exact-search/$(basename "$ZIP" .zip)"
             mkdir -p "$D"
-            unzip -q "$ZIP" -d "$D" || continue
+            unzip -q "$ZIP" -d "$D" 2>/dev/null || { rm -rf "$D"; continue; }
             while IFS= read -r IDX; do
               H=$(shasum -a 256 "$IDX" | awk '{print $1}')
               if [ "$H" = "$TARGET" ]; then
