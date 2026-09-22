@@ -1,5 +1,9 @@
 name: Fix Offline Gift Icon
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/fix-offline-icon.yml' ]
 permissions:
   contents: write
 jobs:
