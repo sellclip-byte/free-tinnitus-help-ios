@@ -23,9 +23,7 @@ jobs:
             echo "Missing $ZIP"
             exit 1
           fi
-          # Overlay the corrected native audio engine maintained at repository root.
           cp NativeAudioEngine.swift build-source/FreeTinnitusHelp/NativeAudioEngine.swift
-          # Correct the UI ear labels to the physical output channels on this build.
           python3 - <<'PY'
           from pathlib import Path
           p=Path("build-source/FreeTinnitusHelp/ContentView.swift")
@@ -71,8 +69,26 @@ jobs:
           name: FreeTinnitusHelp-Simulator
           path: build-source/build/simulator/Build/Products/Debug-iphonesimulator/FreeTinnitusHelp.app
 
-      - name: Upload iPhone unsigned
+      - name: Package approved iPhone IPA for AltStore
+        working-directory: build-source
+        shell: bash
+        run: |
+          APP="build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app"
+          test -d "$APP"
+          test -f "$APP/Info.plist"
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist" 2>/dev/null || true)
+          if [ -z "$EXECUTABLE" ]; then
+            EXECUTABLE="FreeTinnitusHelp"
+            /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string $EXECUTABLE" "$APP/Info.plist"
+          fi
+          test -f "$APP/$EXECUTABLE"
+          rm -rf ipa-package
+          mkdir -p ipa-package/Payload
+          cp -R "$APP" ipa-package/Payload/FreeTinnitusHelp.app
+          ditto -c -k --sequesterRsrc --keepParent ipa-package/Payload FreeTinnitusHelp-APPROVED-70abc10.ipa
+
+      - name: Upload approved iPhone IPA
         uses: actions/upload-artifact@v4
         with:
-          name: FreeTinnitusHelp-iPhone-Unsigned
-          path: build-source/build/iphone/Build/Products/Debug-iphoneos/FreeTinnitusHelp.app
+          name: FreeTinnitusHelp-APPROVED-70abc10-IPA
+          path: build-source/FreeTinnitusHelp-APPROVED-70abc10.ipa
