@@ -1,0 +1,41 @@
+name: Fix Offline Gift Icon
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract approved home-screen icon
+        shell: bash
+        run: |
+          rm -rf exacticon
+          mkdir exacticon
+          unzip -q FreeTinnitusHelp-EXACT-FIXED-PROJECT.zip -d exacticon
+          ICON="$(find exacticon -type f -path '*/AppIcon.appiconset/icon-180.png' -print -quit)"
+          test -f "$ICON"
+          cp "$ICON" offline-app/app-icon-180.png
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("offline-app/index.html")
+          s=p.read_text()
+          import re
+          s=re.sub(r'<link rel="apple-touch-icon"[^>]*>','<link rel="apple-touch-icon" sizes="180x180" href="./app-icon-180.png?v=2">',s)
+          p.write_text(s)
+          m=Path("offline-app/manifest.webmanifest")
+          t=m.read_text()
+          t=t.replace('"./icon-192.png"','"./app-icon-180.png"').replace('"sizes":"192x192"','"sizes":"180x180"')
+          m.write_text(t)
+          sw=Path("offline-app/sw.js")
+          x=sw.read_text().replace("tinnitus-help-gift-v1","tinnitus-help-gift-v2")
+          if "./app-icon-180.png" not in x:
+              x=x.replace('const FILES=[','const FILES=["./app-icon-180.png",')
+          sw.write_text(x)
+          PY
+          rm -rf exacticon
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f offline-app
+          git commit -m "Use approved app icon for offline gift"
+          git push
