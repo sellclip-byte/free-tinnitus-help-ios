@@ -1,0 +1,56 @@
+name: Build Offline Gift Web App
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - FreeTinnitusHelp-EXACT-FIXED-PROJECT.zip
+      - .github/workflows/build-offline-gift.yml
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build installable offline site
+        shell: bash
+        run: |
+          rm -rf offline-app extracted
+          mkdir -p offline-app extracted
+          unzip -q FreeTinnitusHelp-EXACT-FIXED-PROJECT.zip -d extracted
+          WEB="$(find extracted -type d -name Web -print -quit)"
+          test -n "$WEB"
+          cp -R "$WEB"/. offline-app/
+          grep -q "129 Sounds" offline-app/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("offline-app/index.html")
+          s=p.read_text()
+          add='<link rel="manifest" href="./manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="apple-mobile-web-app-title" content="Tinnitus Help"><link rel="apple-touch-icon" href="./icon-192.png">'
+          if 'manifest.webmanifest' not in s: s=s.replace("</head>",add+"</head>")
+          reg="<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}</script>"
+          if 'serviceWorker.register' not in s: s=s.replace("</body>",reg+"</body>")
+          p.write_text(s)
+          PY
+          cat > offline-app/manifest.webmanifest <<'EOF'
+          {"name":"Tinnitus Help","short_name":"Tinnitus Help","start_url":"./","scope":"./","display":"standalone","background_color":"#000000","theme_color":"#000000","icons":[{"src":"./icon-192.png","sizes":"192x192","type":"image/png"},{"src":"./icon-512.png","sizes":"512x512","type":"image/png"}]}
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path("offline-app")
+          files=["./"+p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and p.name!="sw.js"]
+          js="const CACHE='tinnitus-help-gift-v1';const FILES="+json.dumps(files)+";self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(resp=>{let copy=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return resp}).catch(()=>caches.match('./index.html')))));"
+          (root/"sw.js").write_text(js)
+          PY
+          touch offline-app/.nojekyll
+      - name: Publish site files to main
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f offline-app
+          git diff --cached --quiet && exit 0
+          git commit -m "Publish offline gift web app"
+          git push origin HEAD:main
