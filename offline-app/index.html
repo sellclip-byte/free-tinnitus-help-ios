@@ -1577,3 +1577,32 @@ body>*:not(#goldenApp):not(#identityLaunchStatic):not(script):not(style){display
 })();
 </script>
 <script id="sound-repair-last-guard">(function(){function rearm(){var r=document.getElementById('sounds');if(!r)return;r.querySelectorAll('.sound').forEach(function(b){b.onclick=null})}setTimeout(rearm,5600);setTimeout(rearm,8000);window.addEventListener('pageshow',function(){setTimeout(rearm,300)});})();</script>
+
+<!-- iphone-safari-audio-unlock-v1 -->
+<script>
+(function(){
+  var unlocked=false;
+  function unlock(){
+    try{
+      var C=window.AudioContext||window.webkitAudioContext;
+      if(!C)return;
+      var a=(typeof audio==='function')?audio():null;
+      if(!a)return;
+      if(a.state==='suspended')a.resume();
+      /* iOS Safari needs audio to be started synchronously inside a real user gesture. */
+      if(!unlocked){
+        var o=a.createOscillator(),g=a.createGain();
+        g.gain.value=0.000001;o.connect(g);g.connect(a.destination);o.start();
+        o.stop(a.currentTime+0.02);unlocked=true;
+      }
+    }catch(e){}
+  }
+  ['touchstart','pointerdown','click'].forEach(function(ev){
+    document.addEventListener(ev,unlock,{capture:true,passive:true});
+  });
+  document.addEventListener('visibilitychange',function(){
+    if(!document.hidden){try{var a=audio();if(a.state==='suspended')a.resume()}catch(e){}}
+  });
+  window.addEventListener('pageshow',function(){try{var a=audio();if(a.state==='suspended')a.resume()}catch(e){}});
+})();
+</script>
