@@ -1407,10 +1407,6 @@ This app does not diagnose tinnitus or promise a cure.
 #identityLaunchStatic #approvedStartHotspot{display:block!important;position:absolute!important;left:17%!important;right:17%!important;top:75%!important;height:11%!important;z-index:2147483647!important;background:transparent!important;border:0!important;color:transparent!important;box-shadow:none!important}
 body.splash-active>#goldenApp{visibility:hidden!important}
 </style>
-
-
-
-
 </body></html>
 
 <!-- v44 device-fix: persistent frequency, reliable filters/timer UI, full-range native volume, meaningful unique visuals -->
@@ -1524,85 +1520,5 @@ body>*:not(#goldenApp):not(#identityLaunchStatic):not(script):not(style){display
  function close(){if(!splash||closed)return;closed=true;splash.classList.add('hide');setTimeout(function(){if(splash&&splash.parentNode)splash.remove()},340)}
  if(splash){document.body.classList.add('splash-active');var btn=document.getElementById('approvedStartHotspot');if(btn)btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();close();document.body.classList.remove('splash-active')});setTimeout(function(){close();document.body.classList.remove('splash-active')},5000)}
  [2700,3200,4000].forEach(function(ms){setTimeout(enforce,ms)});
-})();
-</script>
-
-<!-- authoritative mobile sound repair: must remain last -->
-<script id="sound-engine-repair-v2-20261001">
-(function(){
- function stop(v){
-  if(!v)return;
-  try{if(typeof stopVoice==='function')stopVoice(v);else{
-   (v.sources||v.primary||[]).forEach(function(x){try{x.stop()}catch(e){}});
-   if(v.source)try{v.source.stop()}catch(e){}
-  }}catch(e){}
- }
- async function playCard(b){
-  var i=Number(b.dataset.idx);
-  if(typeof defs==='undefined'||!Number.isInteger(i)||!defs[i])return;
-  var d=defs[i], c=audio();
-  if(c.state==='suspended')await c.resume();
-  selected=d;
-  if(active.has(i)){stop(active.get(i));active.delete(i);setButton(b,false);return;}
-  var pp=Object.assign({},params(),d[3]||{});
-  var v;
-  if(d[2]==='dtsound'){
-   var buf=await ensureDtBuffer(),s=c.createBufferSource(),g=c.createGain();
-   s.buffer=buf;s.loop=true;g.gain.value=Math.min(pp.vol/100,.55);
-   s.connect(g);g.connect(c.destination);s.start();
-   v={type:'dtsound',source:s,sources:[s],primary:[s],gain:g,master:g,p:pp,params:pp};
-  }else{
-   v=make(d[2],pp);
-  }
-  active.set(i,v);setButton(b,true);
- }
- function install(){
-  var root=document.getElementById('sounds');if(!root)return;
-  /* install() is called several times because older UI code rebuilds the library.
-     Never attach the authoritative listener twice to the same root. */
-  if(root.dataset.soundRepairV2==='1'){
-   root.querySelectorAll('.sound').forEach(function(b){b.onclick=null});
-   return;
-  }
-  root.dataset.soundRepairV2='1';
-  root.addEventListener('click',function(e){
-   var b=e.target.closest('.sound');if(!b||!root.contains(b))return;
-   e.preventDefault();e.stopImmediatePropagation();
-   playCard(b).catch(function(err){console.error('sound-playback',b.dataset.idx,err)});
-  },true);
-  root.querySelectorAll('.sound').forEach(function(b){b.onclick=null});
- }
- function boot(){install();setTimeout(install,1200);setTimeout(install,3200);setTimeout(install,5200)}
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-})();
-</script>
-<script id="sound-repair-last-guard">(function(){function rearm(){var r=document.getElementById('sounds');if(!r)return;r.querySelectorAll('.sound').forEach(function(b){b.onclick=null})}setTimeout(rearm,5600);setTimeout(rearm,8000);window.addEventListener('pageshow',function(){setTimeout(rearm,300)});})();</script>
-
-<!-- iphone-safari-audio-unlock-v1 -->
-<script>
-(function(){
-  var unlocked=false;
-  function unlock(){
-    try{
-      var C=window.AudioContext||window.webkitAudioContext;
-      if(!C)return;
-      var a=(typeof audio==='function')?audio():null;
-      if(!a)return;
-      if(a.state==='suspended')a.resume();
-      /* iOS Safari needs audio to be started synchronously inside a real user gesture. */
-      if(!unlocked){
-        var o=a.createOscillator(),g=a.createGain();
-        g.gain.value=0.000001;o.connect(g);g.connect(a.destination);o.start();
-        o.stop(a.currentTime+0.02);unlocked=true;
-      }
-    }catch(e){}
-  }
-  ['touchstart','pointerdown','click'].forEach(function(ev){
-    document.addEventListener(ev,unlock,{capture:true,passive:true});
-  });
-  document.addEventListener('visibilitychange',function(){
-    if(!document.hidden){try{var a=audio();if(a.state==='suspended')a.resume()}catch(e){}}
-  });
-  window.addEventListener('pageshow',function(){try{var a=audio();if(a.state==='suspended')a.resume()}catch(e){}});
 })();
 </script>
