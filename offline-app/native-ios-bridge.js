@@ -21,29 +21,11 @@ window.IOSNative={
  pan:function(v){this.send("pan",{value:v})}, timer:function(m){this.send("timer",{minutes:m})}
 };
 (function(){
- const num=(v,d)=>{v=Number(v);return Number.isFinite(v)?v:d};
- function def(c){let i=num(c.dataset.idx,-1);return (typeof defs!=="undefined"&&i>=0&&defs[i])?defs[i]:null}
- document.addEventListener("click",e=>{
-  let c=e.target.closest?.("#sounds .sound"); if(!c)return;
-  setTimeout(()=>{
-   IOSNative.clear();IOSNative.dtStop();let synth=0;
-   document.querySelectorAll("#sounds .sound.active").forEach(x=>{
-    let d=def(x);if(!d)return;
-    const type=d[2]||"sine", name=d[1]||"", p=d[3]||{};
-    if(type==="dtsound"||String(name).toLowerCase()==="dt.sound"){IOSNative.dtPlay(); IOSNative.dtVolume(Math.max(0,Math.min(1,num(p.vol,35)/100)))}
-    else {IOSNative.add(iosNativeType(type),num(p.freq,7700),Math.max(0,Math.min(1,num(p.vol,28)/100)),num(p.band,900),num(p.mod,0));synth++;}
-   });
-   if(synth)IOSNative.start();
-  },30);
- },true);
- document.addEventListener("input",e=>{
-  let id=e.target?.id||"",v=num(e.target?.value,0);
-  if(id==="freq"||id==="frequency")IOSNative.frequency(v);
-  if(id==="band"||id==="bandwidth")IOSNative.bandwidth(v);
-  if(id==="pulse"||id==="speed")IOSNative.pulse(v);
-  if(id==="vol"||id==="v27vol"){let q=Math.max(0,Math.min(1,v/num(e.target.max,100)));IOSNative.volume(q);IOSNative.dtVolume(q);}
- },true);
+ /* Web/PWA sound cards are handled exclusively by the Web Audio library engine.
+    Native audio remains available only for explicit native controls (timer/pan/etc.).
+    This prevents iPhone from clearing/replacing the selected card after every tap. */
 })();
+
 document.addEventListener("click",function(e){
  if(!e.target.closest?.("#v27startTimer"))return;
  setTimeout(function(){
