@@ -71,10 +71,16 @@ jobs:
           })();
           </script>
           """
-          if "iphone-129-sound-fix-20261001" not in s:
-              s=s.replace("</body>",patch+"\n</body>") if "</body>" in s else s+patch
-              open(p,"w",encoding="utf-8").write(s)
-          assert "iphone-129-sound-fix-20261001" in open(p,encoding="utf-8").read()
+          marker="iphone-129-sound-fix-20261001"
+          if marker in s:
+              a=s.rfind('<script id="'+marker+'">')
+              b=s.find("</script>",a)
+              if a>=0 and b>=0: s=s[:a]+s[b+9:]
+          # Legacy scripts exist after the historical </html>; append at literal EOF.
+          s=s.rstrip()+"\n"+patch+"\n"
+          open(p,"w",encoding="utf-8").write(s)
+          final=open(p,encoding="utf-8").read()
+          assert final.rfind(marker) > final.rfind("native-ios-bridge.js")
           PY
 
       - name: Generate Xcode project
