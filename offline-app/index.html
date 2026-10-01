@@ -1558,14 +1558,18 @@ body>*:not(#goldenApp):not(#identityLaunchStatic):not(script):not(style){display
  }
  function install(){
   var root=document.getElementById('sounds');if(!root)return;
+  /* install() is called several times because older UI code rebuilds the library.
+     Never attach the authoritative listener twice to the same root. */
+  if(root.dataset.soundRepairV2==='1'){
+   root.querySelectorAll('.sound').forEach(function(b){b.onclick=null});
+   return;
+  }
   root.dataset.soundRepairV2='1';
-  /* Capture phase makes this the single authoritative library player. */
   root.addEventListener('click',function(e){
    var b=e.target.closest('.sound');if(!b||!root.contains(b))return;
    e.preventDefault();e.stopImmediatePropagation();
    playCard(b).catch(function(err){console.error('sound-playback',b.dataset.idx,err)});
   },true);
-  /* Remove legacy per-card click handlers so one tap cannot start/stop twice. */
   root.querySelectorAll('.sound').forEach(function(b){b.onclick=null});
  }
  function boot(){install();setTimeout(install,1200);setTimeout(install,3200);setTimeout(install,5200)}
