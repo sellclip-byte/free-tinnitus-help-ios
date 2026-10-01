@@ -1407,6 +1407,37 @@ This app does not diagnose tinnitus or promise a cure.
 #identityLaunchStatic #approvedStartHotspot{display:block!important;position:absolute!important;left:17%!important;right:17%!important;top:75%!important;height:11%!important;z-index:2147483647!important;background:transparent!important;border:0!important;color:transparent!important;box-shadow:none!important}
 body.splash-active>#goldenApp{visibility:hidden!important}
 </style>
+
+<script id="sound-engine-repair-20261001">
+/* Repair: each visible library card plays its own defs[] sound directly. */
+(function(){
+ function bind(){
+  if(typeof defs==='undefined'||typeof make!=='function'||typeof audio!=='function')return;
+  document.querySelectorAll('#sounds .sound').forEach(function(b){
+   if(b.dataset.soundRepair==='1')return;
+   b.dataset.soundRepair='1';
+   b.onclick=async function(e){
+    e.preventDefault(); e.stopPropagation();
+    var i=Number(b.dataset.idx), d=defs[i]; if(!d)return;
+    selected=d;
+    var c=audio(); if(c.state==='suspended')await c.resume();
+    if(active.has(i)){stopVoice(active.get(i));active.delete(i);setButton(b,false);return;}
+    var pp=Object.assign({},params(),d[3]||{});
+    try{
+     if(d[2]==='dtsound'){
+      var buf=await ensureDtBuffer(),s=c.createBufferSource(),g=c.createGain();
+      s.buffer=buf;s.loop=true;g.gain.value=Math.min(.55,pp.vol/100*.55);s.connect(g);g.connect(c.destination);s.start();
+      active.set(i,{type:'dtsound',primary:[s],gain:g,source:s,params:pp,p:pp});
+     }else active.set(i,make(d[2],pp));
+     setButton(b,true);
+    }catch(err){console.error('Sound '+i+' failed',err);}
+   };
+  });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(bind,450)});else setTimeout(bind,450);
+ setTimeout(bind,3000);setTimeout(bind,5200);
+})();
+</script>
 </body></html>
 
 <!-- v44 device-fix: persistent frequency, reliable filters/timer UI, full-range native volume, meaningful unique visuals -->
