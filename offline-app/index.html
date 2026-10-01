@@ -1410,50 +1410,7 @@ body.splash-active>#goldenApp{visibility:hidden!important}
 
 
 
-<script id="sound-engine-repair-v2-20261001">
-(function(){
- function stop(v){
-  if(!v)return;
-  try{if(typeof stopVoice==='function')stopVoice(v);else{
-   (v.sources||v.primary||[]).forEach(function(x){try{x.stop()}catch(e){}});
-   if(v.source)try{v.source.stop()}catch(e){}
-  }}catch(e){}
- }
- async function playCard(b){
-  var i=Number(b.dataset.idx);
-  if(typeof defs==='undefined'||!Number.isInteger(i)||!defs[i])return;
-  var d=defs[i], c=audio();
-  if(c.state==='suspended')await c.resume();
-  selected=d;
-  if(active.has(i)){stop(active.get(i));active.delete(i);setButton(b,false);return;}
-  var pp=Object.assign({},params(),d[3]||{});
-  var v;
-  if(d[2]==='dtsound'){
-   var buf=await ensureDtBuffer(),s=c.createBufferSource(),g=c.createGain();
-   s.buffer=buf;s.loop=true;g.gain.value=Math.min(pp.vol/100,.55);
-   s.connect(g);g.connect(c.destination);s.start();
-   v={type:'dtsound',source:s,sources:[s],primary:[s],gain:g,master:g,p:pp,params:pp};
-  }else{
-   v=make(d[2],pp);
-  }
-  active.set(i,v);setButton(b,true);
- }
- function install(){
-  var root=document.getElementById('sounds');if(!root||root.dataset.soundRepairV2==='1')return;
-  root.dataset.soundRepairV2='1';
-  /* Capture phase makes this the single authoritative library player. */
-  root.addEventListener('click',function(e){
-   var b=e.target.closest('.sound');if(!b||!root.contains(b))return;
-   e.preventDefault();e.stopImmediatePropagation();
-   playCard(b).catch(function(err){console.error('sound-playback',b.dataset.idx,err)});
-  },true);
-  /* Remove legacy per-card click handlers so one tap cannot start/stop twice. */
-  root.querySelectorAll('.sound').forEach(function(b){b.onclick=null});
- }
- function boot(){install();setTimeout(install,1200);setTimeout(install,3200);setTimeout(install,5200)}
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-})();
-</script>
+
 </body></html>
 
 <!-- v44 device-fix: persistent frequency, reliable filters/timer UI, full-range native volume, meaningful unique visuals -->
@@ -1569,3 +1526,50 @@ body>*:not(#goldenApp):not(#identityLaunchStatic):not(script):not(style){display
  [2700,3200,4000].forEach(function(ms){setTimeout(enforce,ms)});
 })();
 </script>
+
+<!-- authoritative mobile sound repair: must remain last -->
+<script id="sound-engine-repair-v2-20261001">
+(function(){
+ function stop(v){
+  if(!v)return;
+  try{if(typeof stopVoice==='function')stopVoice(v);else{
+   (v.sources||v.primary||[]).forEach(function(x){try{x.stop()}catch(e){}});
+   if(v.source)try{v.source.stop()}catch(e){}
+  }}catch(e){}
+ }
+ async function playCard(b){
+  var i=Number(b.dataset.idx);
+  if(typeof defs==='undefined'||!Number.isInteger(i)||!defs[i])return;
+  var d=defs[i], c=audio();
+  if(c.state==='suspended')await c.resume();
+  selected=d;
+  if(active.has(i)){stop(active.get(i));active.delete(i);setButton(b,false);return;}
+  var pp=Object.assign({},params(),d[3]||{});
+  var v;
+  if(d[2]==='dtsound'){
+   var buf=await ensureDtBuffer(),s=c.createBufferSource(),g=c.createGain();
+   s.buffer=buf;s.loop=true;g.gain.value=Math.min(pp.vol/100,.55);
+   s.connect(g);g.connect(c.destination);s.start();
+   v={type:'dtsound',source:s,sources:[s],primary:[s],gain:g,master:g,p:pp,params:pp};
+  }else{
+   v=make(d[2],pp);
+  }
+  active.set(i,v);setButton(b,true);
+ }
+ function install(){
+  var root=document.getElementById('sounds');if(!root)return;
+  root.dataset.soundRepairV2='1';
+  /* Capture phase makes this the single authoritative library player. */
+  root.addEventListener('click',function(e){
+   var b=e.target.closest('.sound');if(!b||!root.contains(b))return;
+   e.preventDefault();e.stopImmediatePropagation();
+   playCard(b).catch(function(err){console.error('sound-playback',b.dataset.idx,err)});
+  },true);
+  /* Remove legacy per-card click handlers so one tap cannot start/stop twice. */
+  root.querySelectorAll('.sound').forEach(function(b){b.onclick=null});
+ }
+ function boot(){install();setTimeout(install,1200);setTimeout(install,3200);setTimeout(install,5200)}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+<script id="sound-repair-last-guard">(function(){function rearm(){var r=document.getElementById('sounds');if(!r)return;r.querySelectorAll('.sound').forEach(function(b){b.onclick=null})}setTimeout(rearm,5600);setTimeout(rearm,8000);window.addEventListener('pageshow',function(){setTimeout(rearm,300)});})();</script>
