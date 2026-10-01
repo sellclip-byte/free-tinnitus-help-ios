@@ -25,6 +25,58 @@ jobs:
           echo "ROOT=$ROOT" >> "$GITHUB_ENV"
           grep -q "129 Sounds" "$ROOT/FreeTinnitusHelp/Web/index.html"
 
+      - name: Patch iPhone sound library in extracted project
+        shell: bash
+        run: |
+          cp NativeAudioEngine.swift "$ROOT/FreeTinnitusHelp/NativeAudioEngine.swift"
+          cp DtSoundPlayer.swift "$ROOT/FreeTinnitusHelp/DtSoundPlayer.swift"
+          python3 - <<'PY'
+          import os
+          p=os.path.join(os.environ["ROOT"],"FreeTinnitusHelp","Web","index.html")
+          s=open(p,encoding="utf-8").read()
+          patch=r"""
+          <script id="iphone-129-sound-fix-20261001">
+          (function(){
+            if(!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.nativeAudio))return;
+            var H=window.webkit.messageHandlers.nativeAudio;
+            function send(action,data){try{H.postMessage(Object.assign({action:action},data||{}))}catch(e){}}
+            function defFor(b){var i=Number(b.dataset.idx);return (typeof defs!=="undefined"&&Number.isInteger(i))?defs[i]:null}
+            function nativeType(t){
+              t=String(t||"sine").toLowerCase();
+              var known=["sine","square","buzz","electric","triangle","hum","white","hiss","narrow","widehiss","air","steam","static","crackle","pink","brown","pulse","flutter","warble","waver","metallic","glass","shimmer","dual","fan","jet","engine","cicada","cricket","radio","cloud","highring","softring","whistle","reference"];
+              if(known.indexOf(t)>=0)return t;
+              if(t.indexOf("whistle")>=0)return "whistle";
+              if(t.indexOf("ring")>=0)return "highring";
+              if(t.indexOf("buzz")>=0||t.indexOf("electric")>=0)return "electric";
+              if(t.indexOf("noise")>=0||t.indexOf("hiss")>=0)return "hiss";
+              return "sine";
+            }
+            document.addEventListener("click",function(e){
+              var b=e.target.closest&&e.target.closest("#sounds .sound"); if(!b)return;
+              e.preventDefault(); e.stopImmediatePropagation();
+              var d=defFor(b); if(!d)return;
+              var was=b.dataset.iphonePlaying==="1";
+              document.querySelectorAll("#sounds .sound").forEach(function(x){x.dataset.iphonePlaying="0";x.classList.remove("active")});
+              send("clear");send("dtStop");
+              if(was){send("stop");return}
+              var p=d[3]||{}, type=d[2]||"sine", name=String(d[1]||"").toLowerCase();
+              if(type==="dtsound"||name==="dt.sound"){
+                send("dtPlay");send("dtVolume",{value:Math.max(0,Math.min(1,Number(p.vol||35)/100))});
+              }else{
+                send("add",{type:nativeType(type),frequency:Number(p.freq||7700),volume:Math.max(0,Math.min(1,Number(p.vol||28)/100)),band:Number(p.band||900),pulse:Number(p.mod||0)});
+                send("start");
+              }
+              b.dataset.iphonePlaying="1";b.classList.add("active");
+            },true);
+          })();
+          </script>
+          """
+          if "iphone-129-sound-fix-20261001" not in s:
+              s=s.replace("</body>",patch+"\n</body>") if "</body>" in s else s+patch
+              open(p,"w",encoding="utf-8").write(s)
+          assert "iphone-129-sound-fix-20261001" in open(p,encoding="utf-8").read()
+          PY
+
       - name: Generate Xcode project
         shell: bash
         run: |
