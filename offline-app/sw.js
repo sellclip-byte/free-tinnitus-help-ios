@@ -1,4 +1,4 @@
-const CACHE='tinnitus-help-gift-v3-20261001';
+const CACHE='tinnitus-help-gift-v4-20261001';
 const CORE=['./index.html','./manifest.webmanifest','./identity.png','./personal-tone.png','./app-icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));
